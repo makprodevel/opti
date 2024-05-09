@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "opti"
+version = "0.1.0"
+description = ""
+authors = ["mak.pro.devel <mak.pro.devel@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = {extras = ["all"], version = "^0.110.1"}
+sqlalchemy = "^2.0.29"
+alembic = "^1.13.1"
+psycopg2-binary = "^2.9.9"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+requests = "^2.31.0"
+uvicorn = "^0.29.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
