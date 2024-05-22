@@ -1,10 +1,11 @@
 from fastapi import FastAPI, Depends
-from .auth import auth_app
+from .auth import auth
 from .jwt_utils import get_current_user_email
 
 
 app = FastAPI()
-app.mount('/auth', auth_app)
+app.include_router(auth)
+
 
 @app.get('/')
 async def home(current_email: str = Depends(get_current_user_email)):

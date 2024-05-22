@@ -1,10 +1,10 @@
 from datetime import timedelta
-
+import requests
 from .utils import utc_now
 
 from jose import jwt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2AuthorizationCodeBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from .database import async_session_maker
 from sqlalchemy import select
@@ -16,11 +16,7 @@ from opti.config import SECRET_KEY
 API_ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30
 
-
-oauth2_scheme = OAuth2AuthorizationCodeBearer(
-    authorizationUrl='/auth',
-    tokenUrl='/auth/google'
-)
+oauth2_scheme2 = HTTPBearer()
 
 CREDENTIALS_EXCEPTION = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -63,7 +59,8 @@ def decode_token(token):
     return jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
 
 
-async def get_current_user_email(token: str = Depends(oauth2_scheme)):
+async def get_current_user_email(credentials: HTTPAuthorizationCredentials = Depends(oauth2_scheme2)):
+    token = credentials.credentials
     try:
         payload = decode_token(token)
         email: str = payload.get('sub')
