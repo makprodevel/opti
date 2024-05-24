@@ -1,8 +1,8 @@
-import os
-
-
 from dotenv import load_dotenv
 load_dotenv()
+
+import os
+from loguru import logger
 
 
 GOOGLE_REDIRECT_URI = "http://localhost:8000/auth/google"
@@ -17,3 +17,5 @@ DB_USER = os.environ.get("db_user")
 DB_PASS = os.environ.get("db_pass")
 API_ACCESS_TOKEN_EXPIRE_MINUTES = 60
 REFRESH_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30
+REDIS_URL = os.environ.get("redis_url", "redis://localhost:6379")
+REDIS_DB = os.environ.get("redis_db", 0)

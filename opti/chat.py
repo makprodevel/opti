@@ -2,8 +2,10 @@ from enum import Enum
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from datetime import datetime
 from pydantic import BaseModel
+from opti.redis import get_redis
 from redis import asyncio as aioredis
 import asyncio
+from .config import logger
 
 from .auth import get_current_user_email
 
@@ -52,7 +54,8 @@ async def chat_websocket(
 ):
     email = await get_current_user_email(token=websocket.cookies.get('jwt'))
     await websocket.accept()
-    redis = await aioredis.Redis()
+    redis = await get_redis()
+    logger.info(f"Open websocket for: {email}")
 
     try:
         await asyncio.gather(
@@ -60,4 +63,4 @@ async def chat_websocket(
             chat_output_handler(websocket, redis),
         )
     except WebSocketDisconnect:
-        print('websocket disconect')
+        logger.info(f"Open close for: {email}")
