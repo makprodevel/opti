@@ -1,6 +1,5 @@
-from sqlalchemy import Column, String, Boolean, TIMESTAMP
+from sqlalchemy import Column, String, Boolean, TIMESTAMP, func
 from opti.database import DBase
-from .utils import utc_now
 
 
 class User(DBase):
@@ -9,6 +8,6 @@ class User(DBase):
     email = Column(String, nullable=False, primary_key=True, unique=True)
     nickname = Column(String, nullable=False)
     is_superuser = Column(Boolean, nullable=False, default=False)
-    registered_at = Column(TIMESTAMP, default=utc_now)
-    online_at = Column(TIMESTAMP, default=utc_now)
-    is_blocked = Column(Boolean, default=False)
+    registered_at = Column(TIMESTAMP, default=func.now())
+    online_at = Column(TIMESTAMP, default=func.now())
+    is_blocked = Column(Boolean, nullable=False, default=False)
