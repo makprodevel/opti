@@ -1,8 +1,9 @@
 import os
+
+
 from dotenv import load_dotenv
-
-
 load_dotenv()
+
 
 GOOGLE_REDIRECT_URI = "http://localhost:8000/auth/google"
 
@@ -14,3 +15,5 @@ DB_PORT = os.environ.get("db_port")
 DB_NAME = os.environ.get("db_name")
 DB_USER = os.environ.get("db_user")
 DB_PASS = os.environ.get("db_pass")
+API_ACCESS_TOKEN_EXPIRE_MINUTES = 60
+REFRESH_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30

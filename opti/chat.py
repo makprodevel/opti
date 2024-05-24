@@ -1,11 +1,11 @@
 from enum import Enum
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from datetime import datetime
 from pydantic import BaseModel
 from redis import asyncio as aioredis
 import asyncio
 
-from .jwt_utils import get_current_user_email
+from .auth import get_current_user_email
 
 
 chat = APIRouter(
@@ -33,6 +33,7 @@ async def chat_input_handler(websocket: WebSocket, redis: aioredis.Redis):
         input = await websocket.receive_json()
         await redis.publish(channel='msg', message=input)
         print('input:', input)
+
 
 async def chat_output_handler(websocket: WebSocket, redis: aioredis.Redis):
     async with redis.pubsub() as subscribe:

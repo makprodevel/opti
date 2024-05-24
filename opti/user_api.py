@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select, update
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
-from .jwt_utils import get_current_user_email, CREDENTIALS_EXCEPTION
+from .auth import get_current_user_email, CREDENTIALS_EXCEPTION
 from .database import get_async_session, AsyncSession
 from .models import User
 from .chat import chat
@@ -14,6 +14,7 @@ user_api = APIRouter(
 )
 
 user_api.include_router(chat)
+
 
 class CurrentUser(BaseModel):
     email: str
@@ -33,12 +34,12 @@ async def get_current_user(
 
 @user_api.put('/me', response_model=CurrentUser)
 async def change_nickname(
-    new_nickname: str,
-    email: str = Depends(get_current_user_email),
-    session: AsyncSession = Depends(get_async_session)
+        new_nickname: str,
+        email: str = Depends(get_current_user_email),
+        session: AsyncSession = Depends(get_async_session)
 ) -> CurrentUser:
     try:
-        query = update(User).values(nickname = new_nickname).where(User.email == email)
+        query = update(User).values(nickname=new_nickname).where(User.email == email)
         await session.execute(query)
         await session.commit()
         return CurrentUser(email=email, nickname=new_nickname)

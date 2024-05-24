@@ -8,6 +8,7 @@ class User(DBase):
 
     email = Column(String, nullable=False, primary_key=True, unique=True)
     nickname = Column(String, nullable=False)
-    is_superuser = Column(Boolean, nullable=False)
+    is_superuser = Column(Boolean, nullable=False, default=False)
     registered_at = Column(TIMESTAMP, default=utc_now)
     online_at = Column(TIMESTAMP, default=utc_now)
+    is_blocked = Column(Boolean, default=False)
