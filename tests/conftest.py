@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 
-from opti.database import DBase, get_async_session
-from opti.config import DB_HOST, DB_PASS, DB_PORT, DB_USER
+from opti.core.database import DBase, get_async_session
+from opti.core.config import DB_HOST, DB_PASS, DB_PORT, DB_USER
 from opti.main import app
 
 

@@ -2,12 +2,12 @@ from enum import Enum
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from datetime import datetime
 from pydantic import BaseModel
-from opti.redis import get_redis
+from opti.core.redis import get_redis
 from redis import asyncio as aioredis
 import asyncio
-from .config import logger
+from opti.core.config import logger
 
-from .auth import get_current_user_email
+from opti.auth.auth import get_current_user_email
 
 
 chat = APIRouter(

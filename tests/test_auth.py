@@ -1,9 +1,7 @@
-import asyncio
-
-from conftest import client, async_session_maker
-from sqlalchemy import select, insert
-from opti.models import User
-from opti.utils import create_nickname_from_email
+from conftest import async_session_maker
+from sqlalchemy import insert
+from opti.core.models import User
+from opti.core.utils import create_nickname_from_email
 
 
 async def test_add_user():

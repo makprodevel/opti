@@ -1,8 +1,8 @@
 from fastapi import FastAPI
-from .auth import auth
-from .user_api import user_api
-from .config import logger
-from .redis import init_redis_pool, shutdown_redis_pool
+from opti.auth.auth import auth
+from opti.api.user_api import user_api
+from opti.core.config import logger
+from opti.core.redis import init_redis_pool, shutdown_redis_pool
 
 
 app = FastAPI()

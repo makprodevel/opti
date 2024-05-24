@@ -1,14 +1,14 @@
 import requests
-from fastapi import APIRouter, Depends, Response, HTTPException, Body, Header
+from fastapi import APIRouter, Depends, Response, HTTPException, Header
 from fastapi.security import OAuth2AuthorizationCodeBearer, APIKeyCookie
 from jose.jwt import JWTError
 from sqlalchemy import select
 from starlette import status
 
-from .database import async_session_maker
-from .jwt import create_token, decode_token, create_refresh_token
-from .models import User
-from .utils import create_nickname_from_email
+from opti.core.database import async_session_maker
+from opti.auth.jwt import create_token, decode_token, create_refresh_token
+from opti.core.models import User
+from opti.core.utils import create_nickname_from_email
 
 
 auth = APIRouter(

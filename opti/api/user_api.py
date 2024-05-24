@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select, update
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
-from .auth import get_current_user_email, CREDENTIALS_EXCEPTION
-from .database import get_async_session, AsyncSession
-from .models import User
-from .chat import chat
+from opti.auth.auth import get_current_user_email, CREDENTIALS_EXCEPTION
+from opti.core.database import get_async_session, AsyncSession
+from opti.core.models import User
+from opti.api.chat import chat
 
 
 user_api = APIRouter(

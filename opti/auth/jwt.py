@@ -1,9 +1,9 @@
 from datetime import timedelta
-from .utils import utc_now
+from opti.core.utils import utc_now
 
 from jose import jwt as _jwt
 
-from opti.config import SECRET_KEY, API_ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_MINUTES
+from opti.core.config import SECRET_KEY, API_ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_MINUTES
 
 
 def create_access_token(*, data: dict, expires_delta: timedelta = None):

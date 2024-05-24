@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Boolean, TIMESTAMP, func
-from opti.database import DBase
+from opti.core.database import DBase
 
 
 class User(DBase):

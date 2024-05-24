@@ -1,5 +1,5 @@
 from redis import asyncio as aioredis
-from opti.config import REDIS_URL, REDIS_DB
+from opti.core.config import REDIS_URL, REDIS_DB
 
 
 __redis = None
