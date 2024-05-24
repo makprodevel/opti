@@ -1,10 +1,9 @@
 from datetime import timedelta
-import requests
-from .utils import utc_now
+from .utils import utc_now, create_nickname_from_email
 
 from jose import jwt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import APIKeyCookie
 
 from .database import async_session_maker
 from sqlalchemy import select
@@ -16,7 +15,6 @@ from opti.config import SECRET_KEY
 API_ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30
 
-oauth2_scheme2 = HTTPBearer()
 
 CREDENTIALS_EXCEPTION = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -50,8 +48,16 @@ def create_token(email):
 
 async def valid_email_from_db(email) -> bool:
     async with async_session_maker() as session:
+        if not await session.get(User, email):
+            new_user = User(
+                email=email,
+                nickname=create_nickname_from_email(email),
+                is_superuser=False,
+            )
+            await session.add(new_user)
         query = select(User).where(User.email == email)
         user = await session.execute(query)
+        await session.commit()
         return len(user.scalars().all())
 
 
@@ -59,8 +65,7 @@ def decode_token(token):
     return jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
 
 
-async def get_current_user_email(credentials: HTTPAuthorizationCredentials = Depends(oauth2_scheme2)):
-    token = credentials.credentials
+async def get_current_user_email(token: str = Depends(APIKeyCookie(name='jwt'))):
     try:
         payload = decode_token(token)
         email: str = payload.get('sub')

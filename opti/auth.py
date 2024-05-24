@@ -1,5 +1,5 @@
 import requests
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from fastapi.security import OAuth2AuthorizationCodeBearer
 
 from .jwt_utils import create_token, CREDENTIALS_EXCEPTION, valid_email_from_db
@@ -23,10 +23,13 @@ auth = APIRouter(
 
 
 @auth.get('/get-token')
-async def get_token(token: str = Depends(oauth2_scheme)):
-    response = requests.get('https://www.googleapis.com/oauth2/v3/userinfo', headers={'Authorization': f'Bearer {token}'})
-    email = response.json().get('email')
-    if valid_email_from_db(email):
-        return create_token(email)
+async def get_token(
+    response: Response,
+    token: str = Depends(oauth2_scheme),
+):
+    user_info = requests.get('https://www.googleapis.com/oauth2/v3/userinfo', headers={'Authorization': f'Bearer {token}'})
+    email = user_info.json().get('email')
+    if await valid_email_from_db(email):
+        return response.set_cookie('jwt', create_token(email), secure=True, httponly=True)
 
     raise CREDENTIALS_EXCEPTION
