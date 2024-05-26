@@ -5,6 +5,9 @@ import os
 from loguru import logger
 
 
+logger.add('logs/log.txt', rotation="500 KB")
+
+
 GOOGLE_REDIRECT_URI = "http://localhost:8000/auth/google"
 
 GOOGLE_CLIENT_ID = os.environ.get('client-id')
@@ -15,7 +18,7 @@ DB_PORT = os.environ.get("db_port")
 DB_NAME = os.environ.get("db_name")
 DB_USER = os.environ.get("db_user")
 DB_PASS = os.environ.get("db_pass")
-API_ACCESS_TOKEN_EXPIRE_MINUTES = 60
+API_ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 REFRESH_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30
 REDIS_URL = os.environ.get("redis_url", "redis://localhost:6379")
 REDIS_DB = os.environ.get("redis_db", 0)

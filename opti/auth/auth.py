@@ -1,14 +1,18 @@
+from uuid import UUID
 import requests
 from fastapi import APIRouter, Depends, Response, HTTPException, Header
 from fastapi.security import OAuth2AuthorizationCodeBearer, APIKeyCookie
 from jose.jwt import JWTError
+from redis import Redis
 from sqlalchemy import select
 from starlette import status
 
 from opti.core.database import async_session_maker
+from opti.core.redis import get_redis
 from opti.auth.jwt import create_token, decode_token, create_refresh_token
 from opti.core.models import User
 from opti.core.utils import create_nickname_from_email
+from opti.core.config import logger
 
 
 auth = APIRouter(
@@ -33,32 +37,50 @@ CREDENTIALS_EXCEPTION = HTTPException(
 )
 
 
-async def valid_email_from_db(email) -> bool:
+async def get_id_from_email(email: str) -> UUID:
     async with async_session_maker() as session:
-        if not await session.get(User, email):
+        query = select(User).where(User.email == email)
+        user = await session.execute(query)
+        user: User = user.scalar()
+        if user is None:
             new_user = User(
                 email=email,
                 nickname=create_nickname_from_email(email),
             )
-            await session.add(new_user)
-        query = select(User).where(User.email == email)
-        user = await session.execute(query)
-        user: User = user.scalar()
-        await session.commit()
-        return not user.is_blocked
+            session.add(new_user)
+            await session.commit()
+            user = await session.execute(query)
+            user: User = user.scalar()
+        if user.is_blocked:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='User has been blocked'
+            )
+        return user.id
 
 
-async def get_current_user_email(token: str = Depends(APIKeyCookie(name='jwt'))):
+async def valid_user_from_db(user_id: UUID) -> bool:
+    async with async_session_maker() as session:
+        user = await session.get(User, user_id)
+        if user is not None:
+            return not user.is_blocked
+
+
+async def get_current_user_id(
+        token: str = Depends(APIKeyCookie(name='jwt'))
+) -> bool:
     try:
         payload = decode_token(token)
-        email: str = payload.get('sub')
-        if email is None:
+        user_id: str = payload.get('sub')
+        if user_id is None:
             raise CREDENTIALS_EXCEPTION
     except JWTError:
         raise CREDENTIALS_EXCEPTION
 
-    if await valid_email_from_db(email):
-        return email
+    user_id = UUID(user_id)
+
+    if await valid_user_from_db(user_id):
+        return user_id
 
     raise CREDENTIALS_EXCEPTION
 
@@ -71,11 +93,10 @@ async def get_token(
     user_info = requests.get('https://www.googleapis.com/oauth2/v3/userinfo',
                              headers={'Authorization': f'Bearer {token}'})
     email = user_info.json().get('email')
-    if await valid_email_from_db(email):
-        response.set_cookie('jwt', create_token(email), secure=True, httponly=True)
-        return create_refresh_token(email)
-
-    raise CREDENTIALS_EXCEPTION
+    user_id = await get_id_from_email(email)
+    response.set_cookie('jwt', create_token(str(user_id)), secure=True, httponly=True)
+    logger.debug(f"get token for {email}")
+    return create_refresh_token(str(user_id))
 
 
 @auth.get('/refresh-token')
@@ -85,14 +106,15 @@ async def refresh_token(
 ):
     try:
         payload = decode_token(refresh_token)
-        email: str = payload.get('sub')
-        if email is None:
+        user_id: str = payload.get('sub')
+        if user_id is None:
             raise CREDENTIALS_EXCEPTION
     except JWTError:
         raise CREDENTIALS_EXCEPTION
 
-    if await valid_email_from_db(email):
-        response.set_cookie('jwt', create_token(email), secure=True, httponly=True)
-        return create_refresh_token(email)
+    if await valid_user_from_db(UUID(user_id)):
+        response.set_cookie('jwt', create_token(user_id), secure=True, httponly=True)
+        logger.debug(f"refresh token for {user_id}")
+        return create_refresh_token(user_id)
 
     raise CREDENTIALS_EXCEPTION
