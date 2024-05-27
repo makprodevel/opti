@@ -1,40 +1,22 @@
-from enum import Enum
 from uuid import UUID
 import json
-
+import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
-from datetime import datetime
-
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import update
 
+from opti.api.schema import ClientActionType, MessageInRedis, MessageToClient
 from opti.core.database import get_async_session
 from opti.core.models import Message
 from opti.core.redis import get_redis
-from redis import asyncio as aioredis
-import asyncio
 from opti.core.config import logger
-
 from opti.auth.auth import get_current_user_id, valid_user_from_db
+
 
 chat = APIRouter(
     prefix='/chat',
     tags=['chat'],
 )
-
-
-class RowChat(BaseModel):
-    email: str
-    nickname: str
-    last_message: str
-    time_last_message: datetime
-    is_read: bool
-
-
-class ClientActionType(Enum):
-    status_init = 'status_init'
-    get_chat = 'get_chat'
-    send_message = 'send_message'
 
 
 async def send_message(
@@ -57,8 +39,14 @@ async def send_message(
         message=message
     )
     db_session.add(new_message)
-    await redis.publish(channel=str(recipient_id), message=message)
     await db_session.commit()
+    msg_in_redis = MessageInRedis(
+        message_id=new_message.id,
+        sender_id=user_id,
+        message=message,
+        message_time=new_message.created_at
+    )
+    await redis.publish(channel=str(recipient_id), message=msg_in_redis.model_dump_json())
 
 
 async def get_chat(
@@ -104,7 +92,19 @@ async def chat_output_handler(
         while True:
             msg = await subscribe.get_message(ignore_subscribe_messages=True)
             if msg is not None:
-                logger.info(f'send: {msg.get("data")}')
+                logger.debug(f'data from redis to handler: {msg}')
+                data = msg.get("data")
+                msg_in_redis = MessageInRedis.model_validate_json(data)
+                msg_to_client = MessageToClient(
+                    sender_id=msg_in_redis.sender_id,
+                    message=msg_in_redis.message,
+                    message_time=msg_in_redis.message_time
+                )
+                await websocket.send_json(msg_to_client.model_dump_json())
+                query = update(Message).values(is_viewed=True).where(Message.id == msg_in_redis.message_id)
+                await db_session.execute(query)
+                await db_session.commit()
+
 
 
 @chat.websocket('/ws')

@@ -49,8 +49,7 @@ async def get_id_from_email(email: str) -> UUID:
             )
             session.add(new_user)
             await session.commit()
-            user = await session.execute(query)
-            user: User = user.scalar()
+            user: User = new_user
         if user.is_blocked:
             logger.info(f'User {user.id} trying pass.')
             raise HTTPException(
