@@ -19,23 +19,18 @@ class User(DBase):
     is_superuser: Mapped[bool] = mapped_column(server_default=text("false"))
     registered_at: Mapped[created_at_c]
     is_blocked: Mapped[bool] = mapped_column(server_default=text("false"))
+    messages_sent: Mapped["Message"] = relationship(foreign_keys="[Message.sender_id]", back_populates='sender')
+    messages_received: Mapped["Message"] = relationship(foreign_keys="[Message.recipient_id]",  back_populates='recipient')
 
 
 class Message(DBase):
     __tablename__ = "message"
 
     id: Mapped[uuidpk]
-    sender_id: Mapped[UUID] = mapped_column( ForeignKey('users.id', ondelete='CASCADE'))
-    recipient_id: Mapped[UUID] = mapped_column( ForeignKey('users.id', ondelete='CASCADE'))
+    sender_id: Mapped[UUID] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'))
+    recipient_id: Mapped[UUID] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'))
     message: Mapped[str] = mapped_column()
     created_at: Mapped[created_at_c]
     is_viewed: Mapped[bool] = mapped_column(server_default=text("false"))
-    sender = relationship('User', back_populates='message')
-    recipient = relationship('User', back_populates='message')
-
-
-User.messages_sent = relationship('Message', back_populates='sender', foreign_keys=[Message.sender_id])
-User.messages_received = relationship('Message', back_populates='recipient', foreign_keys=[Message.recipient_id])
-
-Message.sender = relationship('User', foreign_keys=[Message.sender_id], back_populates='messages_sent')
-Message.recipient = relationship('User', foreign_keys=[Message.recipient_id], back_populates='messages_received')
+    sender: Mapped["User"] = relationship(foreign_keys=[sender_id], back_populates='messages_sent')
+    recipient: Mapped["User"] = relationship(foreign_keys=[recipient_id], back_populates='messages_received')
