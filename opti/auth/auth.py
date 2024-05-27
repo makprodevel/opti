@@ -72,7 +72,7 @@ async def valid_user_from_db(user_id: UUID) -> bool:
 
 async def get_current_user_id(
         token: str = Depends(APIKeyCookie(name='jwt'))
-) -> bool:
+) -> UUID:
     try:
         payload = decode_token(token)
         user_id: str = payload.get('sub')
@@ -81,7 +81,7 @@ async def get_current_user_id(
     except JWTError:
         raise CREDENTIALS_EXCEPTION
 
-    user_id = UUID(user_id)
+    user_id: UUID = UUID(user_id)
 
     if await valid_user_from_db(user_id):
         return user_id
