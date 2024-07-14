@@ -7,8 +7,8 @@ from pydantic import BaseModel
 
 class ActionBase(BaseModel):
     def __init_subclass__(cls, **kwargs):
-        if not hasattr(cls, 'type_'):
-            raise TypeError(f"Class {cls.__name__} must define 'type_' attribute.")
+        if not hasattr(cls, 'action_type'):
+            raise TypeError(f"Class {cls.__name__} must define 'action_type' attribute.")
         super().__init_subclass__(**kwargs)
 
 
@@ -34,7 +34,7 @@ class MessageInChat(BaseModel):
 
 
 class GetChatSchemaReturn(ActionBase):
-    type_: str = 'chat'
+    action_type: str = 'chat'
     messages: list[MessageInChat]
 
 
@@ -44,7 +44,7 @@ class SendMessageSchema(BaseModel):
 
 
 class MessageToClient(MessageInChat, ActionBase):
-    type_: str = 'sended_message'
+    action_type: str = 'sended_message'
     sender_id: UUID
 
 
@@ -56,8 +56,16 @@ class RowChat(BaseModel):
     is_read: bool
 
 
-class ReadedMessage(BaseModel):
-    id: UUID
+class ReadedMessagesForRecipient(ActionBase):
+    action_type: str = 'readed_message'
+    sender_id: UUID
+    list_message: list[UUID]
+
+
+class ReadedMessagesForSender(ActionBase):
+    action_type: str = "readed_message"
+    recipient_id: UUID
+    list_message: list[UUID]
 
 
 class ChatPreview(BaseModel):
@@ -69,5 +77,5 @@ class ChatPreview(BaseModel):
 
 
 class StatusInit(ActionBase):
-    type_: str = 'status_init'
+    action_type: str = 'status_init'
     chat_list: list[ChatPreview]

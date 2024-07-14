@@ -14,9 +14,8 @@ app.include_router(user_api)
 
 @app.on_event("startup")
 async def startup():
-    redis = await get_redis()
-    FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
     await init_redis_pool()
+    FastAPICache.init(RedisBackend(get_redis()), prefix="fastapi-cache")
     logger.info("Opti is up")
 
 

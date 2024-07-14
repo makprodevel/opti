@@ -1,8 +1,9 @@
-from redis import asyncio as aioredis
+from redis import asyncio as aioredis, Redis
 from opti.core.config import REDIS_URL, REDIS_DB
 
 
-__redis = None
+redis: Redis = None
+
 
 async def init_redis_pool():
 
@@ -12,14 +13,15 @@ async def init_redis_pool():
         db=REDIS_DB,
         decode_responses=True,
     )
-    global __redis
-    __redis = redis_c
+    global redis
+    redis = redis_c
+
 
 async def shutdown_redis_pool():
-    global __redis
-    await __redis.close()
+    global redis
+    await redis.close()
 
 
-async def get_redis():
-    global __redis
-    return __redis
+def get_redis() -> Redis:
+    global redis
+    return redis

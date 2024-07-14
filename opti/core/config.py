@@ -22,3 +22,4 @@ API_ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 REFRESH_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30
 REDIS_URL = os.environ.get("redis_url", "redis://localhost:6379")
 REDIS_DB = os.environ.get("redis_db", 0)
+CELERY_BROKER = os.environ.get("celery_broker", REDIS_URL)

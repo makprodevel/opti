@@ -60,7 +60,7 @@ async def get_id_from_email(email: str) -> UUID:
 
 
 async def valid_user_from_db(user_id: UUID) -> bool:
-    redis: Redis = await get_redis()
+    redis = get_redis()
     if await redis.sismember('valid_id', str(user_id)):
         return True
     async with async_session_maker() as session:

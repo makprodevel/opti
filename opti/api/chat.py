@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import update, select, func, and_, desc
 
 from opti.api.schema import ClientActionType, MessageToClient, SendMessageSchema, ServerError, GetChatSchema, \
-    MessageInChat, GetChatSchemaReturn, ReadedMessage, ChatPreview, StatusInit
+    MessageInChat, GetChatSchemaReturn, ChatPreview, StatusInit, ReadedMessagesForRecipient, ReadedMessagesForSender
 from opti.core.database import async_session_maker
 from opti.core.models import Message, User
 from opti.core.redis import get_redis
@@ -33,7 +33,7 @@ async def send_message(
     input_: dict,
     user_id: UUID,
 ):
-    redis = await get_redis()
+    redis = get_redis()
     try:
         send_msg_input: SendMessageSchema = SendMessageSchema.model_validate(input_)
     except ValidationError as e:
@@ -125,19 +125,31 @@ async def status_init(
     await websocket.send_json(chats_preview.model_dump_json())
 
 
-async def readed_message(
+async def read_message(
     websocket: WebSocket,
-    db_session: AsyncSession,
     input_: dict,
     user_id: UUID,
 ):
     try:
-        readed_message_ = ReadedMessage.model_validate(input_)
+        readed_message = ReadedMessagesForRecipient.model_validate(input_)
     except KeyError as e:
         raise WebsocketError(e)
-    query = update(Message).values(is_viewed=True).where(and_(Message.id==readed_message_.id, Message.recipient_id==user_id))
-    await db_session.execute(query)
-    await db_session.commit()
+    redis = get_redis()
+    list_message_for_sender = ReadedMessagesForSender(recipient_id=user_id, list_message=readed_message.list_message)
+    if not (unsync_read_message := await redis.hget('unsync_read_message', str(user_id))):
+        unsync_read_message = ""
+    await asyncio.gather(
+        redis.hset(
+            'unsync_read_message',
+            str(user_id),
+            unsync_read_message+";".join(str(i) for i in readed_message.list_message)+';'
+        ),
+        redis.publish(
+            channel=f"read_message:{readed_message.sender_id}",
+            message=list_message_for_sender.model_dump_json()
+        ),
+        websocket.send_json(readed_message.model_dump_json()),
+    )
 
 
 async def chat_input_handler(
@@ -156,6 +168,8 @@ async def chat_input_handler(
                         await get_chat(websocket, db_session, input_, user_id)
                     case ClientActionType.status_init:
                         await status_init(websocket, db_session, user_id)
+                    case ClientActionType.readed_message:
+                        await read_message(websocket, input_, user_id)
 
             except (WebsocketError, json.decoder.JSONDecodeError, ValueError) as e:
                 await websocket.send_json({'error': 'invalid json'})
@@ -168,18 +182,13 @@ async def chat_output_handler(
     user_id: UUID,
 ):
     async with async_session_maker() as db_session:
-        redis = await get_redis()
+        redis = get_redis()
         async with redis.pubsub() as subscribe:
-            await subscribe.psubscribe(str(user_id))
-            while True:
-                msg = await subscribe.get_message(ignore_subscribe_messages=True)
-                if msg is not None:
+            await subscribe.psubscribe(str(user_id), f"read_message:{user_id}")
+            async for msg in subscribe.listen():
+                if msg['type'] == 'pmessage':
                     data = msg.get("data")
-                    msg_in_redis = MessageToClient.model_validate_json(data)
-                    await websocket.send_json(msg_in_redis.model_dump_json())
-                    # query = update(Message).values(is_viewed=True).where(Message.id == msg_in_redis.message_id)
-                    # await db_session.execute(query)
-                    # await db_session.commit()
+                    await websocket.send_json(data)
 
 
 @chat.websocket('/ws')
