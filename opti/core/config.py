@@ -1,18 +1,23 @@
 from dotenv import load_dotenv
-load_dotenv()
-
 import os
 from loguru import logger
 
 
+load_dotenv()
+
 logger.add('logs/log.txt', rotation="500 KB")
 
 
+origins = [
+    'http://localhost:5173/',
+    'http://localhost:8000/',
+]
+
 GOOGLE_REDIRECT_URI = "http://localhost:8000/auth/google"
 
-GOOGLE_CLIENT_ID = os.environ.get('client-id')
-GOOGLE_CLIENT_SECRET = os.environ.get('client-secret')
-SECRET_KEY = os.environ.get('secret-key')
+GOOGLE_CLIENT_ID = os.environ.get('client_id')
+GOOGLE_CLIENT_SECRET = os.environ.get('client_secret')
+SECRET_KEY = os.environ.get('secret_key')
 DB_HOST = os.environ.get("db_host")
 DB_PORT = os.environ.get("db_port")
 DB_NAME = os.environ.get("db_name")

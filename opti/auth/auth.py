@@ -9,7 +9,7 @@ from starlette import status
 
 from opti.core.database import async_session_maker
 from opti.core.redis import get_redis
-from opti.auth.jwt import create_token, decode_token, create_refresh_token
+from opti.auth.jwt import create_token, decode_token, create_refresh_token, decode_google_token
 from opti.core.models import User
 from opti.core.utils import create_nickname_from_email
 from opti.core.config import logger
@@ -87,6 +87,20 @@ async def get_current_user_id(
         return user_id
 
     raise CREDENTIALS_EXCEPTION
+
+
+@auth.get('/google')
+async def get_google_code(
+    response: Response,
+    token: str = Depends(oauth2_scheme),
+):
+    logger.debug(token)
+    user_info = decode_google_token(token)
+    email = user_info.get('email')
+    user_id = await get_id_from_email(email)
+    response.set_cookie('jwt', create_token(str(user_id)), secure=True, httponly=True)
+    logger.debug(f"get google token for {email}")
+    return create_refresh_token(str(user_id))
 
 
 @auth.get('/get-token')
