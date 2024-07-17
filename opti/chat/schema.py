@@ -81,6 +81,3 @@ class StatusInit(ActionBase):
     chat_list: list[ChatPreview]
 
 
-class CurrentUser(BaseModel):
-    email: str
-    nickname: str

@@ -5,15 +5,16 @@ import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import update, select, func, and_, desc
+from sqlalchemy import select, func, desc
 
-from opti.api.schema import ClientActionType, MessageToClient, SendMessageSchema, ServerError, GetChatSchema, \
+from opti.chat.schema import ClientActionType, MessageToClient, SendMessageSchema, GetChatSchema, \
     MessageInChat, GetChatSchemaReturn, ChatPreview, StatusInit, ReadedMessagesForRecipient, ReadedMessagesForSender
 from opti.core.database import async_session_maker
-from opti.core.models import Message, User
+from opti.auth.models import User
+from opti.chat.models import Message
 from opti.core.redis import get_redis
 from opti.core.config import logger
-from opti.auth.auth import get_current_user_id, valid_user_from_db
+from opti.auth.service import get_current_user_id, valid_user_from_db
 from opti.core.utils import utc_now
 
 

@@ -6,7 +6,7 @@ from sqlalchemy import update, or_, and_
 
 from opti.core.config import CELERY_BROKER, logger
 from opti.core.database import async_session_maker
-from opti.core.models import Message
+from opti.chat.models import Message
 from opti.core.redis import init_redis_pool, get_redis
 
 celery = Celery('tasks', broker=CELERY_BROKER)
