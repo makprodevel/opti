@@ -79,3 +79,8 @@ class ChatPreview(BaseModel):
 class StatusInit(ActionBase):
     action_type: str = 'status_init'
     chat_list: list[ChatPreview]
+
+
+class CurrentUser(BaseModel):
+    email: str
+    nickname: str

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, update
-from pydantic import BaseModel
+from sqlalchemy import update
 from sqlalchemy.exc import SQLAlchemyError
 
+from opti.api.schema import CurrentUser
 from opti.auth.auth import get_current_user_id, CREDENTIALS_EXCEPTION
 from opti.core.database import get_async_session, AsyncSession
 from opti.core.models import User
@@ -16,11 +16,6 @@ user_api = APIRouter(
 )
 
 user_api.include_router(chat)
-
-
-class CurrentUser(BaseModel):
-    email: str
-    nickname: str
 
 
 @user_api.get('/me', response_model=CurrentUser)
