@@ -1,10 +1,9 @@
 from datetime import timedelta
-import requests
 from jose import jwt as _jwt, JWTError, jwk
 from jose.utils import base64url_decode
 
 from opti.core.utils import utc_now
-from opti.core.config import SECRET_KEY, API_ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_MINUTES, GOOGLE_CLIENT_ID
+from opti.core.config import SECRET_KEY, API_ACCESS_TOKEN_EXPIRE_MINUTES, GOOGLE_CLIENT_ID
 
 
 def create_access_token(*, data: dict, expires_delta: timedelta = None):
@@ -18,12 +17,11 @@ def create_access_token(*, data: dict, expires_delta: timedelta = None):
     return encoded_jwt
 
 
-def create_refresh_token(email):
-    expires = timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
-    return create_access_token(data={'sub': email}, expires_delta=expires)
+# def create_refresh_token(email):
+#     expires = timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
+#     return create_access_token(data={'sub': email}, expires_delta=expires)
 
 
-# Create token for an email
 def create_token(email):
     access_token_expires = timedelta(minutes=API_ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(data={'sub': email}, expires_delta=access_token_expires)

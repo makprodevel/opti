@@ -1,7 +1,7 @@
 from conftest import async_session_maker
 from sqlalchemy import insert, select
-from opti.auth.auth import valid_user_from_db
-from opti.core.models import User
+from opti.auth.service import valid_user_from_db
+from opti.auth.models import User
 from opti.core.utils import create_nickname_from_email
 
 

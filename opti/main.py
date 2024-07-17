@@ -3,8 +3,9 @@ from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 from starlette.middleware.cors import CORSMiddleware
 
-from opti.auth.auth import auth
+from opti.auth.api import auth
 from opti.api.user_api import user_api
+from opti.chat.api import chat
 from opti.core.config import logger, origins
 from opti.core.redis import init_redis_pool, shutdown_redis_pool, get_redis
 
@@ -20,6 +21,7 @@ app.add_middleware(
 
 app.include_router(auth)
 app.include_router(user_api)
+app.include_router(chat)
 
 
 @app.on_event("startup")

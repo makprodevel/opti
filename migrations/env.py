@@ -6,7 +6,8 @@ from sqlalchemy import pool
 from alembic import context
 
 from opti.core.database import DBase, DATABASE_URL
-from opti.core.models import User
+from opti.auth.models import User
+from opti.chat.models import Message
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
