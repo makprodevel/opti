@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Body
 from pydantic import BaseModel
 from sqlalchemy import update
 from sqlalchemy.exc import SQLAlchemyError
@@ -25,13 +25,14 @@ async def get_current_user(
         user_id: str = Depends(get_current_user_id),
         session: AsyncSession = Depends(get_async_session)
 ) -> CurrentUser:
+    logger.debug(f'get me for {user_id}')
     user = await session.get(User, user_id)
     return CurrentUser(email=user.email, nickname=user.nickname)
 
 
 @user_api.put('/me')
 async def change_nickname(
-        new_nickname: str,
+        new_nickname: str = Body(..., embed=True),
         user_id: str = Depends(get_current_user_id),
         session: AsyncSession = Depends(get_async_session)
 ):

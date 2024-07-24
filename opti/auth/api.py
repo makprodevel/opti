@@ -56,15 +56,13 @@ async def get_google_code(
     response: Response,
     token: str = Depends(oauth2_scheme),
 ):
-    logger.debug(token)
     user_info = decode_google_token(token)
     email = user_info.get('email')
     user_id = await get_id_from_email(email)
     redis = get_redis()
     await redis.sadd('valid_id', str(user_id))
     response.set_cookie('jwt', create_token(str(user_id)), secure=True, httponly=True)
-    logger.debug(f"get google token for {email}")
-    return "Login success"
+    logger.debug(f"get google token for {user_id}")
 
 
 @auth.get('/set_token_in_cookie')
