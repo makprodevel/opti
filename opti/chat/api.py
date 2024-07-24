@@ -28,7 +28,6 @@ from opti.core.config import logger
 from opti.auth.service import get_current_user_id, valid_user_from_db
 from opti.core.utils import utc_now
 
-
 chat = APIRouter(
     prefix="/chat",
     tags=["chat"],
@@ -39,16 +38,13 @@ class WebsocketError(Exception): ...
 
 
 async def send_message(
-    websocket: WebSocket,
-    db_session: AsyncSession,
-    input_: dict,
-    user_id: UUID,
+        websocket: WebSocket,
+        db_session: AsyncSession,
+        user_id: UUID,
+        data: SendMessageSchema
 ):
     redis = get_redis()
-    try:
-        send_msg_input: SendMessageSchema = SendMessageSchema.model_validate(input_)
-    except ValidationError as e:
-        raise WebsocketError(e)
+    send_msg_input = data
     if not await valid_user_from_db(send_msg_input.recipient_id):
         raise WebsocketError(f"invalid recipient_id: {send_msg_input.recipient_id}")
 
@@ -79,15 +75,12 @@ async def send_message(
 
 
 async def get_chat(
-    websocket: WebSocket,
-    db_session: AsyncSession,
-    input_: dict,
-    user_id: UUID,
+        websocket: WebSocket,
+        db_session: AsyncSession,
+        user_id: UUID,
+        data: GetChatSchema
 ):
-    try:
-        get_chat_ = GetChatSchema.model_validate(input_)
-    except KeyError as e:
-        raise WebsocketError(e)
+    get_chat_ = data
     if not await valid_user_from_db(get_chat_.recipient_id):
         raise WebsocketError(f"invalid recipient_id: {get_chat_.recipient_id}")
 
@@ -120,9 +113,9 @@ async def get_chat(
 
 
 async def get_preview(
-    websocket: WebSocket,
-    db_session: AsyncSession,
-    user_id: UUID,
+        websocket: WebSocket,
+        db_session: AsyncSession,
+        user_id: UUID,
 ):
     latest_messages = (
         select(
@@ -169,15 +162,12 @@ async def get_preview(
 
 
 async def delete_chat(
-    websocket: WebSocket,
-    db_session: AsyncSession,
-    input_: dict,
-    user_id: UUID,
+        websocket: WebSocket,
+        db_session: AsyncSession,
+        user_id: UUID,
+        data: DeleteChatScheme
 ):
-    try:
-        chat_to_delete = DeleteChatScheme.model_validate(input_)
-    except KeyError as e:
-        raise WebsocketError(e)
+    chat_to_delete = data
     query = delete(Message).where(
         or_(
             and_(
@@ -193,20 +183,17 @@ async def delete_chat(
 
 
 async def read_message(
-    websocket: WebSocket,
-    input_: dict,
-    user_id: UUID,
+        websocket: WebSocket,
+        user_id: UUID,
+        data: ReadMessagesForRecipientReturn
 ):
-    try:
-        readed_message = ReadMessagesForRecipientReturn.model_validate(input_)
-    except KeyError as e:
-        raise WebsocketError(e)
+    readed_message = data
     redis = get_redis()
     list_message_for_sender = ReadMessagesForSenderReturn(
         recipient_id=user_id, list_message=readed_message.list_message
     )
     if not (
-        unsync_read_message := await redis.hget("unsync_read_message", str(user_id))
+            unsync_read_message := await redis.hget("unsync_read_message", str(user_id))
     ):
         unsync_read_message = ""
     await asyncio.gather(
@@ -226,26 +213,37 @@ async def read_message(
 
 
 async def chat_input_handler(
-    websocket: WebSocket,
-    user_id: UUID,
+        websocket: WebSocket,
+        user_id: UUID,
 ):
     async with async_session_maker() as db_session:
         while True:
             try:
-                input_: dict = await websocket.receive_json()
-                action_type = input_.get("action_type")
-                logger.debug(f"ws: {user_id}: {action_type}")
-                match ServerActionType(action_type):
-                    case ServerActionType.send_message:
-                        await send_message(websocket, db_session, input_, user_id)
-                    case ServerActionType.get_chat:
-                        await get_chat(websocket, db_session, input_, user_id)
-                    case ServerActionType.get_preview:
-                        await get_preview(websocket, db_session, user_id)
-                    case ServerActionType.read_message:
-                        await read_message(websocket, input_, user_id)
-                    case ServerActionType.delete_chat:
-                        await delete_chat(websocket, db_session, input_, user_id)
+                ws_data: dict = await websocket.receive_json()
+                try:
+                    action_type = ServerActionType(ws_data.get("action_type"))
+                except ValueError:
+                    raise WebsocketError('invalid action')
+                logger.debug(f"ws: {user_id}: {action_type.value}")
+
+                action_list = {
+                    ServerActionType.send_message: (send_message, SendMessageSchema, (db_session, user_id)),
+                    ServerActionType.get_chat: (get_chat, GetChatSchema, (db_session, user_id)),
+                    ServerActionType.get_preview: (get_preview, None, (db_session, user_id)),
+                    ServerActionType.read_message: (read_message, ReadMessagesForRecipientReturn, (user_id,)),
+                    ServerActionType.delete_chat: (delete_chat, DeleteChatScheme, (db_session, user_id)),
+                }
+
+                func, schema, params = action_list[action_type]
+
+                if schema is not None:
+                    try:
+                        data = schema.model_validate(ws_data)
+                        params = params + (data,)
+                    except (KeyError, ValueError, ValidationError) as e:
+                        raise WebsocketError(e)
+                await func(websocket, *params)
+
 
             except (WebsocketError, json.decoder.JSONDecodeError, ValueError) as e:
                 await websocket.send_json({"error": "invalid json"})
@@ -254,8 +252,8 @@ async def chat_input_handler(
 
 
 async def chat_output_handler(
-    websocket: WebSocket,
-    user_id: UUID,
+        websocket: WebSocket,
+        user_id: UUID,
 ):
     async with async_session_maker() as db_session:
         redis = get_redis()
@@ -269,7 +267,7 @@ async def chat_output_handler(
 
 @chat.websocket("/ws")
 async def chat_websocket(
-    websocket: WebSocket,
+        websocket: WebSocket,
 ):
     user_id: UUID = await get_current_user_id(token=websocket.cookies.get("jwt"))
     await websocket.accept()
