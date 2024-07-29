@@ -6,6 +6,8 @@ from jose import JWTError
 from starlette import status
 
 from opti.auth.jwt import decode_token
+from opti.auth.models import User
+from opti.core.database import async_session_maker
 from opti.core.redis import get_redis
 
 
@@ -20,6 +22,12 @@ async def valid_user_from_db(user_id: UUID) -> bool:
     redis = get_redis()
     if await redis.sismember('valid_id', str(user_id)):
         return True
+    async with async_session_maker() as session:
+        user = await session.get(User, user_id)
+        if user is not None and not user.is_blocked:
+            await redis.sadd('valid_id', str(user_id))
+            return True
+
 
 async def get_current_user_id(
         token: str = Depends(APIKeyCookie(name='jwt'))

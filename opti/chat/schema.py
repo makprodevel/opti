@@ -19,10 +19,6 @@ class ActionBase(BaseModel):
         super().__init_subclass__(**kwargs)
 
 
-class ServerError(BaseModel):
-    error: str
-
-
 class ClientActionType(Enum):
     get_preview = "get_preview"
     get_chat = "get_chat"
@@ -64,7 +60,7 @@ class SendMessageSchema(BaseModel):
 
 class SendMessageReturn(MessageInChat, ActionBase):
     action_type: ClientActionType = ClientActionType.receive_message
-    sender_id: UUID
+    other_id: UUID
 
 
 class RowChat(BaseModel):
@@ -93,6 +89,7 @@ class ChatPreview(BaseModel):
     message: str
     last_message_time: datetime
     is_viewed: bool
+    count: int
 
 
 class GetPreviewReturn(ActionBase):

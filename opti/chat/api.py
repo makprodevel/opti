@@ -5,7 +5,7 @@ import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, and_, delete, or_
+from sqlalchemy import select, func, desc, and_, delete, or_, case
 
 from opti.chat.schema import (
     SendMessageReturn,
@@ -44,32 +44,39 @@ async def send_message(
         data: SendMessageSchema
 ):
     redis = get_redis()
-    send_msg_input = data
-    if not await valid_user_from_db(send_msg_input.recipient_id):
-        raise WebsocketError(f"invalid recipient_id: {send_msg_input.recipient_id}")
+    if not await valid_user_from_db(data.recipient_id):
+        raise WebsocketError(f"invalid recipient_id: {data.recipient_id}")
 
     message_id = uuid.uuid4()
-    msg_to_client = SendMessageReturn(
+    msg_to_this_user = SendMessageReturn(
         id=message_id,
-        sender_id=user_id,
-        text=send_msg_input.message,
+        other_id=data.recipient_id,
+        text=data.message,
         time=utc_now(),
         is_viewed=False,
-        owning=user_id == send_msg_input.recipient_id,
+        owning=True,
+    )
+    msg_to_other_user = SendMessageReturn(
+        id=message_id,
+        other_id=user_id,
+        text=data.message,
+        time=utc_now(),
+        is_viewed=False,
+        owning=False,
     )
     new_message = Message(
         id=message_id,
         sender_id=user_id,
-        recipient_id=send_msg_input.recipient_id,
-        message=send_msg_input.message,
+        recipient_id=data.recipient_id,
+        message=data.message,
     )
     db_session.add(new_message)
     await asyncio.gather(
         redis.publish(
-            channel=str(send_msg_input.recipient_id),
-            message=msg_to_client.model_dump_json(),
+            channel=str(data.recipient_id),
+            message=msg_to_other_user.model_dump_json(),
         ),
-        websocket.send_json(msg_to_client.model_dump_json()),
+        websocket.send_json(msg_to_this_user.model_dump_json()),
         db_session.commit(),
     )
 
@@ -80,16 +87,21 @@ async def get_chat(
         user_id: UUID,
         data: GetChatSchema
 ):
-    get_chat_ = data
-    if not await valid_user_from_db(get_chat_.recipient_id):
-        raise WebsocketError(f"invalid recipient_id: {get_chat_.recipient_id}")
+    if not await valid_user_from_db(data.recipient_id):
+        raise WebsocketError(f"invalid recipient_id: {data.recipient_id}")
 
     query = (
         select(Message)
         .where(
-            and_(
-                Message.recipient_id == get_chat_.recipient_id,
-                Message.sender_id == user_id,
+            or_(
+                and_(
+                    Message.recipient_id == data.recipient_id,
+                    Message.sender_id == user_id,
+                ),
+                and_(
+                    Message.sender_id == data.recipient_id,
+                    Message.recipient_id == user_id,
+                )
             )
         )
         .order_by(Message.created_at)
@@ -97,7 +109,7 @@ async def get_chat(
     result = await db_session.execute(query)
     messages: list[Message] = result.scalars().all()
     get_chat_return = GetChatSchemaReturn(
-        user_id=get_chat_.recipient_id,
+        user_id=data.recipient_id,
         messages=[
             MessageInChat(
                 id=msg.id,
@@ -125,11 +137,33 @@ async def get_preview(
             Message.created_at,
             Message.is_viewed,
             func.row_number()
-            .over(partition_by=Message.sender_id, order_by=desc(Message.created_at))
+            .over(
+                partition_by=(func.least(Message.sender_id, Message.recipient_id),
+                              func.greatest(Message.sender_id, Message.recipient_id)),
+                order_by=desc(Message.created_at)
+            )
             .label("rn"),
+            case(
+                (Message.sender_id == user_id, Message.recipient_id),
+                (Message.recipient_id == user_id, Message.sender_id)
+            ).label("other_user_id")
         )
-        .where(Message.recipient_id == user_id)
+        .where(or_(Message.recipient_id == user_id, Message.sender_id == user_id))
         .cte("latest_messages")
+    )
+
+    unread_message_counts = (
+        select(
+            func.least(Message.sender_id, Message.recipient_id).label("user1_id"),
+            func.greatest(Message.sender_id, Message.recipient_id).label("user2_id"),
+            func.count().label("message_count")
+        )
+        .where(Message.is_viewed == False)
+        .group_by(
+            func.least(Message.sender_id, Message.recipient_id),
+            func.greatest(Message.sender_id, Message.recipient_id)
+        )
+        .cte("message_counts")
     )
 
     query = (
@@ -139,8 +173,16 @@ async def get_preview(
             latest_messages.c.message,
             latest_messages.c.created_at,
             latest_messages.c.is_viewed,
+            func.coalesce(unread_message_counts.c.message_count, 0).label("unread_count")
         )
-        .join(latest_messages, User.id == latest_messages.c.sender_id)
+        .join(User, User.id == latest_messages.c.other_user_id)
+        .join(
+            unread_message_counts,
+            and_(
+                unread_message_counts.c.user1_id == func.least(user_id, latest_messages.c.other_user_id),
+                unread_message_counts.c.user2_id == func.greatest(user_id, latest_messages.c.other_user_id)
+            )
+        )
         .where(latest_messages.c.rn == 1)
         .order_by(desc(latest_messages.c.created_at))
     )
@@ -154,6 +196,7 @@ async def get_preview(
                 message=i[2],
                 last_message_time=i[3],
                 is_viewed=i[4],
+                count=i[5]
             )
             for i in result.all()
         )
@@ -167,14 +210,13 @@ async def delete_chat(
         user_id: UUID,
         data: DeleteChatScheme
 ):
-    chat_to_delete = data
     query = delete(Message).where(
         or_(
             and_(
-                Message.sender_id == user_id, Message.recipient_id == chat_to_delete.id
+                Message.sender_id == user_id, Message.recipient_id == data.id
             ),
             and_(
-                Message.sender_id == chat_to_delete.id, Message.recipient_id == user_id
+                Message.sender_id == data.id, Message.recipient_id == user_id
             ),
         )
     )
@@ -187,10 +229,9 @@ async def read_message(
         user_id: UUID,
         data: ReadMessagesForRecipientReturn
 ):
-    readed_message = data
     redis = get_redis()
     list_message_for_sender = ReadMessagesForSenderReturn(
-        recipient_id=user_id, list_message=readed_message.list_message
+        recipient_id=user_id, list_message=data.list_message
     )
     if not (
             unsync_read_message := await redis.hget("unsync_read_message", str(user_id))
@@ -201,14 +242,14 @@ async def read_message(
             "unsync_read_message",
             str(user_id),
             unsync_read_message
-            + ";".join(str(i) for i in readed_message.list_message)
+            + ";".join(str(i) for i in data.list_message)
             + ";",
         ),
         redis.publish(
-            channel=f"read_message:{readed_message.sender_id}",
+            channel=f"read_message:{data.sender_id}",
             message=list_message_for_sender.model_dump_json(),
         ),
-        websocket.send_json(readed_message.model_dump_json()),
+        websocket.send_json(data.model_dump_json()),
     )
 
 
