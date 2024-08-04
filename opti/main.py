@@ -6,11 +6,11 @@ from opti.auth.api import auth
 from opti.api.user_api import user_api
 from opti.chat.api import chat
 from opti.core.config import logger, origins
-from opti.core.redis import init_redis_pool, shutdown_redis_pool, get_redis
+from opti.core.redis import init_redis_pool, shutdown_redis_pool
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_: FastAPI):
     await init_redis_pool()
     logger.info("Opti is up")
     yield
@@ -33,5 +33,5 @@ app.include_router(chat)
 
 
 @app.exception_handler(Exception)
-async def exception_handler(request: Request, exc: Exception):
+async def exception_handler(_: Request, exc: Exception):
     logger.error(f"Unhandled exception: {exc}")
