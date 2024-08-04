@@ -15,6 +15,8 @@ origins = [
 
 GOOGLE_REDIRECT_URI = "http://localhost:8000/auth/google"
 
+GOOGLE_CERTS_URL = "https://www.googleapis.com/oauth2/v3/certs"
+GOOGLE_CERTS_TTL = 60
 GOOGLE_CLIENT_ID = os.environ.get('client_id')
 GOOGLE_CLIENT_SECRET = os.environ.get('client_secret')
 SECRET_KEY = os.environ.get('secret_key')

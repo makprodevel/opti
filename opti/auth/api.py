@@ -1,5 +1,6 @@
 from uuid import UUID
-import requests
+
+import aiohttp
 from fastapi import APIRouter, Depends, Response, HTTPException, Request
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from sqlalchemy import select
@@ -56,7 +57,7 @@ async def get_google_code(
     response: Response,
     token: str = Depends(oauth2_scheme),
 ):
-    user_info = decode_google_token(token)
+    user_info = await decode_google_token(token)
     email = user_info.get('email')
     user_id = await get_id_from_email(email)
     redis = get_redis()
@@ -67,9 +68,9 @@ async def get_google_code(
 
 @auth.get('/set_token_in_cookie')
 async def set_token_in_cookie(
-        response: Response,
-        request: Request,
-        token: str = Depends(oauth2_scheme),
+    response: Response,
+    request: Request,
+    token: str = Depends(oauth2_scheme),
 ):
     """
     only for docs and tests
@@ -77,9 +78,13 @@ async def set_token_in_cookie(
     if request.url.path == "/docs-only-endpoint":
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    user_info = requests.get('https://www.googleapis.com/oauth2/v3/userinfo',
-                             headers={'Authorization': f'Bearer {token}'})
-    email = user_info.json().get('email')
+    async with aiohttp.ClientSession() as session:
+        async with session.get('https://www.googleapis.com/oauth2/v3/userinfo',
+                               headers={'Authorization': f'Bearer {token}'}) as http_response:
+            http_response.raise_for_status()
+            user_info = await http_response.json()
+
+    email = user_info.get('email')
     user_id = await get_id_from_email(email)
     redis = get_redis()
     await redis.sadd('valid_id', str(user_id))
