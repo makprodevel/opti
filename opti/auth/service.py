@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from aiocache import cached, Cache
 from fastapi import Depends, HTTPException
 from fastapi.security import APIKeyCookie
 from jose import JWTError
@@ -18,14 +19,11 @@ CREDENTIALS_EXCEPTION = HTTPException(
 )
 
 
+@cached(ttl=30, cache=Cache.REDIS, key='valid_user_cache')
 async def valid_user_from_db(user_id: UUID) -> bool:
-    redis = get_redis()
-    if await redis.sismember('valid_id', str(user_id)):
-        return True
     async with async_session_maker() as session:
         user = await session.get(User, user_id)
         if user is not None and not user.is_blocked:
-            await redis.sadd('valid_id', str(user_id))
             return True
 
 
