@@ -6,15 +6,13 @@ redis: Redis = None
 
 
 async def init_redis_pool():
-
-    redis_c = await aioredis.from_url(
+    global redis
+    redis = await aioredis.from_url(
         REDIS_URL,
         encoding="utf-8",
         db=REDIS_DB,
         decode_responses=True,
     )
-    global redis
-    redis = redis_c
 
 
 async def shutdown_redis_pool():

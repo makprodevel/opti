@@ -1,7 +1,6 @@
-from fastapi import FastAPI
-from fastapi_cache import FastAPICache
-from fastapi_cache.backends.redis import RedisBackend
+from fastapi import FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
 from opti.auth.api import auth
 from opti.api.user_api import user_api
@@ -9,7 +8,16 @@ from opti.chat.api import chat
 from opti.core.config import logger, origins
 from opti.core.redis import init_redis_pool, shutdown_redis_pool, get_redis
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_redis_pool()
+    logger.info("Opti is up")
+    yield
+    await shutdown_redis_pool()
+    logger.info("Opti is down")
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,19 +32,6 @@ app.include_router(user_api)
 app.include_router(chat)
 
 
-@app.on_event("startup")
-async def startup():
-    await init_redis_pool()
-    FastAPICache.init(RedisBackend(get_redis()), prefix="fastapi-cache")
-    logger.info("Opti is up")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    await shutdown_redis_pool()
-    logger.info("Opti is down")
-
-
 @app.exception_handler(Exception)
-async def exception_handler(exc: Exception):
+async def exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception: {exc}")
