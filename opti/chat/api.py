@@ -308,7 +308,7 @@ async def chat_output_handler(
 
 @chat.websocket("/ws")
 async def chat_websocket(
-        websocket: WebSocket,
+    websocket: WebSocket,
 ):
     user_id: UUID = await get_current_user_id(token=websocket.cookies.get("jwt"))
     await websocket.accept()

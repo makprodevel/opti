@@ -21,14 +21,14 @@ def create_access_token(*, data: dict, expires_delta: timedelta = None):
     return encoded_jwt
 
 
-# def create_refresh_token(email):
+# def create_refresh_token(id):
 #     expires = timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
-#     return create_access_token(data={'sub': email}, expires_delta=expires)
+#     return create_access_token(data={'sub': id}, expires_delta=expires)
 
 
-def create_token(email):
+def create_token(id_str: str):
     access_token_expires = timedelta(minutes=API_ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(data={'sub': email}, expires_delta=access_token_expires)
+    access_token = create_access_token(data={'sub': id_str}, expires_delta=access_token_expires)
     return access_token
 
 

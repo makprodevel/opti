@@ -2,19 +2,14 @@ from dotenv import load_dotenv
 import os
 from loguru import logger
 
-
 load_dotenv()
 
 logger.add('logs/log.txt', rotation="500 KB")
-
-
 origins = [
     'http://localhost:5173/',
     'http://localhost:8000/',
 ]
-
 GOOGLE_REDIRECT_URI = "http://localhost:8000/auth/google"
-
 GOOGLE_CERTS_URL = "https://www.googleapis.com/oauth2/v3/certs"
 GOOGLE_CERTS_TTL = 60
 GOOGLE_CLIENT_ID = os.environ.get('client_id')

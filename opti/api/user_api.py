@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Body
-from pydantic import BaseModel
 from sqlalchemy import update
 from sqlalchemy.exc import SQLAlchemyError
 
+from opti.api.schema import CurrentUser, ChangeNickname
 from opti.auth.service import get_current_user_id, CREDENTIALS_EXCEPTION
 from opti.core.database import get_async_session, AsyncSession
 from opti.auth.models import User
@@ -15,32 +15,27 @@ user_api = APIRouter(
 )
 
 
-class CurrentUser(BaseModel):
-    email: str
-    nickname: str
-
-
 @user_api.get('/me', response_model=CurrentUser)
 async def get_current_user(
-        user_id: str = Depends(get_current_user_id),
-        session: AsyncSession = Depends(get_async_session)
+    user_id: str = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_async_session)
 ) -> CurrentUser:
     logger.debug(f'get me for {user_id}')
     user = await session.get(User, user_id)
     return CurrentUser(email=user.email, nickname=user.nickname)
 
 
-@user_api.put('/me')
+@user_api.put('/me', response_model=ChangeNickname)
 async def change_nickname(
-        new_nickname: str = Body(..., embed=True),
-        user_id: str = Depends(get_current_user_id),
-        session: AsyncSession = Depends(get_async_session)
+    data: ChangeNickname = Body(...),
+    user_id: str = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_async_session)
 ):
     try:
-        query = update(User).values(nickname=new_nickname).where(User.id == user_id)
+        query = update(User).values(nickname=data.new_nickname).where(User.id == user_id)
         await session.execute(query)
         await session.commit()
-        return new_nickname
+        return data
     except SQLAlchemyError as e:
         logger.error('change nickname error:', e)
         await session.rollback()
