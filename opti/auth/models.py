@@ -1,5 +1,5 @@
 from typing import Annotated
-from sqlalchemy import text
+from sqlalchemy import text, Index
 from opti.core.database import DBase
 from sqlalchemy.orm import mapped_column, Mapped
 from uuid import UUID
@@ -19,3 +19,11 @@ class User(DBase):
     is_superuser: Mapped[bool] = mapped_column(server_default=text("false"))
     registered_at: Mapped[created_at_c]
     is_blocked: Mapped[bool] = mapped_column(server_default=text("false"))
+
+    __table_args__ = (
+        Index(
+            'idx_users_nickname_trgm',
+            text("nickname gin_trgm_ops"),
+            postgresql_using='gin'
+        ),
+    )

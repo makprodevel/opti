@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Body
-from sqlalchemy import update
+from sqlalchemy import update, text
 from sqlalchemy.exc import SQLAlchemyError
 
-from opti.api.schema import CurrentUser, ChangeNickname
+from opti.api.schema import CurrentUser, ChangeNickname, SearchResult, UserInfo
 from opti.auth.service import get_current_user_id, CREDENTIALS_EXCEPTION
 from opti.core.database import get_async_session, AsyncSession
 from opti.auth.models import User
@@ -40,3 +40,18 @@ async def change_nickname(
         logger.error('change nickname error:', e)
         await session.rollback()
         raise CREDENTIALS_EXCEPTION
+
+
+@user_api.post('/search/user', response_model=SearchResult)
+async def search_user(
+    q: str,
+    session: AsyncSession = Depends(get_async_session)
+):
+    logger.info(f'search user: {q}')
+    query = text("""
+            SELECT users.id, users.nickname FROM users
+            WHERE nickname % :search_term
+        """)
+    result = await session.execute(query, {'search_term': q})
+    users = SearchResult(users=[UserInfo(id=i.id, nickname=i.nickname) for i in result])
+    return users
