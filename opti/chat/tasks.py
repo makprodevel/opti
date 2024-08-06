@@ -10,9 +10,7 @@ from opti.chat.models import Message
 from opti.core.redis import init_redis_pool, get_redis
 
 celery = Celery('tasks', broker=CELERY_BROKER)
-
 celery.conf.timezone = 'UTC'
-
 celery.conf.beat_schedule = {
     'sync_read_message': {
         'task': 'opti.api.tasks.sync_read_message',

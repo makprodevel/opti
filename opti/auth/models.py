@@ -19,6 +19,7 @@ class User(DBase):
     is_superuser: Mapped[bool] = mapped_column(server_default=text("false"))
     registered_at: Mapped[created_at_c]
     is_blocked: Mapped[bool] = mapped_column(server_default=text("false"))
+    online_at: Mapped[datetime] = mapped_column(nullable=True)
 
     __table_args__ = (
         Index(

@@ -13,13 +13,14 @@ class ActionBase(BaseModel):
             )
         if not isinstance(cls.action_type, (ClientActionType, ServerActionType)):
             raise TypeError(
-                f"The 'action_type' attribute in class {cls.__name__} must be of type ClientActionType or ServerActionType."
+                f"The 'action_type' attribute in class {cls.__name__} must be ClientActionType or ServerActionType."
             )
 
         super().__init_subclass__(**kwargs)
 
 
 class ClientActionType(Enum):
+    '''action that client will get'''
     get_preview = "get_preview"
     get_chat = "get_chat"
     receive_message = "receive_message"
@@ -28,7 +29,7 @@ class ClientActionType(Enum):
 
 
 class ServerActionType(Enum):
-    get_preview = "get_preview"
+    '''action that server got'''
     get_chat = "get_chat"
     send_message = "send_message"
     read_message = "read_message"
