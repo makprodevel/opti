@@ -22,7 +22,7 @@ async def get_current_user(
 ) -> CurrentUser:
     logger.debug(f'get me for {user_id}')
     user = await session.get(User, user_id)
-    return CurrentUser(email=user.email, nickname=user.nickname)
+    return CurrentUser(id=user_id, email=user.email, nickname=user.nickname)
 
 
 @user_api.put('/me', response_model=ChangeNickname)
@@ -42,7 +42,7 @@ async def change_nickname(
         raise CREDENTIALS_EXCEPTION
 
 
-@user_api.post('/search/user', response_model=SearchResult)
+@user_api.get('/search/user', response_model=SearchResult)
 async def search_user(
     q: str,
     session: AsyncSession = Depends(get_async_session)
