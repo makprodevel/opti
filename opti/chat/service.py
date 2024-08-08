@@ -10,7 +10,8 @@ from opti.auth.models import User
 from opti.auth.service import valid_user_from_db
 from opti.chat.models import Message
 from opti.chat.schema import SendMessageSchema, ClientReceiveMessagesSchema, GetChatSchema, MessageInChat, \
-    GetPreviewReturn, ChatPreview, DeleteChatScheme, UserInfo, ReadMessagesSchema
+    GetPreviewReturn, ChatPreview, DeleteChatScheme, UserInfo, ReadMessagesSchema, ClientReadMessagesSchema, \
+    ClientDeleteChatScheme
 from opti.chat.utils import WebsocketError
 from opti.core.redis import get_redis
 from opti.core.utils import utc_now
@@ -185,11 +186,12 @@ async def send_message(
 
 async def read_message(
     websocket: WebSocket,
-    db_session: AsyncSession,
+    _: AsyncSession,
     user_id: UUID,
     data: ReadMessagesSchema
 ):
     redis = get_redis()
+    data_to_client = ClientReadMessagesSchema(list_messages_id=data.list_messages_id)
     if not (unsync_read_message := await redis.hget("unsync_read_message", str(user_id))):
         unsync_read_message = ""
     await asyncio.gather(
@@ -202,9 +204,9 @@ async def read_message(
         ),
         redis.publish(
             channel=str(data.other_user_id),
-            message=data.model_dump_json(),
+            message=data_to_client.model_dump_json(),
         ),
-        websocket.send_json(data.model_dump_json()),
+        websocket.send_json(data_to_client.model_dump_json()),
     )
 
 
@@ -214,6 +216,7 @@ async def delete_chat(
     user_id: UUID,
     data: DeleteChatScheme
 ):
+    redis = get_redis()
     query = delete(Message).where(
         or_(
             and_(
@@ -226,6 +229,13 @@ async def delete_chat(
     )
     await db_session.execute(query)
     await db_session.commit()
+    await asyncio.gather(
+        redis.publish(
+            channel=str(data.user_id),
+            message=ClientDeleteChatScheme(other_user_id=user_id).model_dump_json(),
+        ),
+        websocket.send_json(ClientDeleteChatScheme(other_user_id=data.user_id).model_dump_json()),
+    )
 
 
 async def user_status_online(user_id: UUID):

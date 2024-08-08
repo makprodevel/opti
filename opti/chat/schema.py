@@ -76,11 +76,21 @@ class SendMessageSchema(BaseAction):
 
 
 class ReadMessagesSchema(BaseAction):
-    action_type: ServerActionType | ClientActionType = ServerActionType.read_messages
+    action_type: ServerActionType = ServerActionType.read_messages
     other_user_id: UUID
+    list_messages_id: list[UUID]
+
+
+class ClientReadMessagesSchema(BaseAction):
+    action_type: ClientActionType = ClientActionType.read_messages
     list_messages_id: list[UUID]
 
 
 class DeleteChatScheme(BaseAction):
     action_type: ServerActionType = ServerActionType.delete_chat
     user_id: UUID
+
+
+class ClientDeleteChatScheme(BaseAction):
+    action_type: ClientActionType = ClientActionType.delete_chat
+    other_user_id: UUID
