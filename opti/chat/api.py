@@ -7,9 +7,8 @@ from pydantic import ValidationError
 from opti.chat.schema import (
     SendMessageSchema,
     GetChatSchema,
-    ReadMessagesForRecipientReturn,
     ServerActionType,
-    DeleteChatScheme,
+    DeleteChatScheme, ReadMessagesSchema,
 )
 from opti.chat.service import send_message, get_chat, get_preview, delete_chat, read_message, user_status_online, \
     user_status_offline
@@ -42,9 +41,9 @@ async def chat_input_handler(
                 logger.debug(f"ws: {user_id}: {action_type.value}")
 
                 action_list = {
-                    ServerActionType.send_message: (send_message, SendMessageSchema),
                     ServerActionType.get_chat: (get_chat, GetChatSchema),
-                    ServerActionType.read_message: (read_message, ReadMessagesForRecipientReturn),
+                    ServerActionType.send_message: (send_message, SendMessageSchema),
+                    ServerActionType.read_messages: (read_message, ReadMessagesSchema),
                     ServerActionType.delete_chat: (delete_chat, DeleteChatScheme),
                 }
 

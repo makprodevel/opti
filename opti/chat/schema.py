@@ -1,11 +1,11 @@
 from datetime import datetime
 from enum import Enum
 from uuid import UUID
-
 from pydantic import BaseModel
 
 
-class ActionBase(BaseModel):
+class BaseAction(BaseModel):
+    '''mark action data class'''
     def __init_subclass__(cls, **kwargs):
         if not hasattr(cls, "action_type"):
             raise TypeError(
@@ -20,84 +20,67 @@ class ActionBase(BaseModel):
 
 
 class ClientActionType(Enum):
-    '''action that client will get'''
+    '''type request to client'''
     get_preview = "get_preview"
-    get_chat = "get_chat"
-    receive_message = "receive_message"
-    read_message = "read_message"
+    receive_messages = "receive_messages"
+    read_messages = "read_messages"
     delete_chat = "delete_chat"
 
 
 class ServerActionType(Enum):
-    '''action that server got'''
+    '''type request to server'''
     get_chat = "get_chat"
     send_message = "send_message"
-    read_message = "read_message"
+    read_messages = "read_messages"
     delete_chat = "delete_chat"
-
-
-class GetChatSchema(BaseModel):
-    recipient_id: UUID
 
 
 class MessageInChat(BaseModel):
     id: UUID
+    sender_id: UUID
+    recipient_id: UUID
     text: str
     time: datetime
     is_viewed: bool
-    owning: bool
 
 
-class GetChatSchemaReturn(ActionBase):
-    action_type: ClientActionType = ClientActionType.get_chat
-    user_id: UUID
-    messages: list[MessageInChat]
-
-
-class SendMessageSchema(BaseModel):
-    recipient_id: UUID
-    message: str
-
-
-class SendMessageReturn(MessageInChat, ActionBase):
-    action_type: ClientActionType = ClientActionType.receive_message
-    other_id: UUID
-
-
-class RowChat(BaseModel):
+class UserInfo(BaseModel):
     id: UUID
     nickname: str
-    last_message: str
-    time_last_message: datetime
-    is_read: bool
-
-
-class ReadMessagesForRecipientReturn(ActionBase):
-    action_type: ClientActionType = ClientActionType.read_message
-    sender_id: UUID
-    list_message: list[UUID]
-
-
-class ReadMessagesForSenderReturn(ActionBase):
-    action_type: ClientActionType = ClientActionType.read_message
-    recipient_id: UUID
-    list_message: list[UUID]
 
 
 class ChatPreview(BaseModel):
-    user_id: UUID
-    user_nickname: str
-    message: str
-    last_message_time: datetime
-    is_viewed: bool
-    count: int
+    user: UserInfo
+    last_message: MessageInChat
 
 
-class GetPreviewReturn(ActionBase):
+class GetPreviewReturn(BaseAction):
     action_type: ClientActionType = ClientActionType.get_preview
     chat_list: list[ChatPreview]
 
 
-class DeleteChatScheme(ActionBase):
-    action_type: ClientActionType = ClientActionType.delete_chat
-    id: UUID
+class GetChatSchema(BaseAction):
+    action_type: ServerActionType = ServerActionType.get_chat
+    user_id: UUID
+
+
+class ClientReceiveMessagesSchema(BaseAction):
+    action_type: ClientActionType = ClientActionType.receive_messages
+    messages: list[MessageInChat]
+
+
+class SendMessageSchema(BaseAction):
+    action_type: ServerActionType = ServerActionType.send_message
+    recipient_id: UUID
+    message: str
+
+
+class ReadMessagesSchema(BaseAction):
+    action_type: ServerActionType | ClientActionType = ServerActionType.read_messages
+    other_user_id: UUID
+    list_messages_id: list[UUID]
+
+
+class DeleteChatScheme(BaseAction):
+    action_type: ServerActionType = ServerActionType.delete_chat
+    user_id: UUID
