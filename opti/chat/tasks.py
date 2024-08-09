@@ -13,7 +13,7 @@ celery = Celery('tasks', broker=CELERY_BROKER)
 celery.conf.timezone = 'UTC'
 celery.conf.beat_schedule = {
     'sync_read_message': {
-        'task': 'opti.api.tasks.sync_read_message',
+        'task': 'opti.chat.tasks.sync_read_message',
         'schedule': 5,
     },
 }

@@ -28,7 +28,10 @@ async def get_preview(
             Message.recipient_id,
             func.count().label("unread_count")
         )
-        .where(Message.is_viewed.is_(False))
+        .where(and_(
+            Message.is_viewed.is_(False),
+            Message.sender_id != user_id
+        ))
         .group_by(Message.recipient_id, Message.sender_id)
         .cte("unread_messages_count")
     )
@@ -189,13 +192,12 @@ async def read_message(
     data_to_client = ClientReadMessagesSchema(list_messages_id=data.list_messages_id)
     if not (unsync_read_message := await redis.hget("unsync_read_message", str(user_id))):
         unsync_read_message = ""
+    unsync_read_message += ";".join(str(i) for i in data.list_messages_id) + ";"
     await asyncio.gather(
         redis.hset(
             "unsync_read_message",
             str(user_id),
             unsync_read_message
-            + ";".join(str(i) for i in data.list_messages_id)
-            + ";",
         ),
         redis.publish(
             channel=str(data.other_user_id),
