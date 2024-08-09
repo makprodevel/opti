@@ -52,6 +52,7 @@ class UserInfo(BaseModel):
 class ChatPreview(BaseModel):
     user: UserInfo
     last_message: MessageInChat
+    count_unread_message: int
 
 
 class GetPreviewReturn(BaseAction):

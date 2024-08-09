@@ -22,6 +22,17 @@ async def get_preview(
     db_session: AsyncSession,
     user_id: UUID,
 ):
+    unread_messages_count = (
+        select(
+            Message.sender_id,
+            Message.recipient_id,
+            func.count().label("unread_count")
+        )
+        .where(Message.is_viewed.is_(False))
+        .group_by(Message.recipient_id, Message.sender_id)
+        .cte("unread_messages_count")
+    )
+
     latest_messages = (
         select(
             Message,
@@ -41,20 +52,6 @@ async def get_preview(
         .cte("latest_messages")
     )
 
-    unread_message_counts = (
-        select(
-            func.least(Message.sender_id, Message.recipient_id).label("user1_id"),
-            func.greatest(Message.sender_id, Message.recipient_id).label("user2_id"),
-            func.count().label("message_count")
-        )
-        .where(Message.is_viewed == False)
-        .group_by(
-            func.least(Message.sender_id, Message.recipient_id),
-            func.greatest(Message.sender_id, Message.recipient_id)
-        )
-        .cte("message_counts")
-    )
-
     query = (
         select(
             User.id,
@@ -65,16 +62,13 @@ async def get_preview(
             latest_messages.c.message,
             latest_messages.c.created_at,
             latest_messages.c.is_viewed,
-            func.coalesce(unread_message_counts.c.message_count, 0).label("unread_count")
+            func.coalesce(unread_messages_count.c.unread_count, 0).label("unread_count")
         )
-        .join(User, User.id == latest_messages.c.other_user_id)
-        .join(
-            unread_message_counts,
-            and_(
-                unread_message_counts.c.user1_id == func.least(user_id, latest_messages.c.other_user_id),
-                unread_message_counts.c.user2_id == func.greatest(user_id, latest_messages.c.other_user_id)
-            )
-        )
+        .outerjoin(latest_messages, User.id == latest_messages.c.other_user_id)
+        .outerjoin(unread_messages_count, and_(
+            user_id == unread_messages_count.c.recipient_id,
+            User.id == unread_messages_count.c.sender_id,
+        ))
         .where(latest_messages.c.rn == 1)
         .order_by(desc(latest_messages.c.created_at))
     )
@@ -85,7 +79,7 @@ async def get_preview(
             ChatPreview(
                 user=UserInfo(
                     id=i[0],
-                    nickname=i[1]
+                    nickname=i[1],
                 ),
                 last_message=MessageInChat(
                     id=i[2],
@@ -94,7 +88,8 @@ async def get_preview(
                     text=i[5],
                     time=i[6],
                     is_viewed=i[7]
-                )
+                ),
+                count_unread_message=i[8]
             )
             for i in result.all()
         )
