@@ -17,6 +17,7 @@ celery.conf.beat_schedule = {
         'schedule': 5,
     },
 }
+celery.conf.broker_connection_retry_on_startup = True
 
 
 async def sync_read_message_():
