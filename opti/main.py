@@ -1,9 +1,9 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, APIRouter
 from starlette.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from opti.auth.api import auth
-from opti.api.user_api import user_api
+from opti.user_api.user_api import user_api
 from opti.chat.api import chat
 from opti.core.config import logger, origins
 from opti.core.redis import init_redis_pool, shutdown_redis_pool
@@ -17,7 +17,10 @@ async def lifespan(_: FastAPI):
     await shutdown_redis_pool()
     logger.info("Opti is down")
 
+
 app = FastAPI(lifespan=lifespan)
+main_router = APIRouter(prefix="/api")
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,9 +30,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth)
-app.include_router(user_api)
-app.include_router(chat)
+main_router.include_router(auth)
+main_router.include_router(user_api)
+main_router.include_router(chat)
+app.include_router(main_router)
 
 
 @app.exception_handler(Exception)
