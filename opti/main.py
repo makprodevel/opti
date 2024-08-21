@@ -30,6 +30,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@main_router.get('/')
+async def is_run():
+    return 'app is run'
+
+
 main_router.include_router(auth)
 main_router.include_router(user_api)
 main_router.include_router(chat)

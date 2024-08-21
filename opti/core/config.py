@@ -2,7 +2,8 @@ from dotenv import load_dotenv
 import os
 from loguru import logger
 
-load_dotenv()
+if not os.environ.get('release') == 'yes':
+    load_dotenv()
 
 logger.add('logs/log.txt', rotation="500 KB")
 origins = [
@@ -16,9 +17,9 @@ GOOGLE_CLIENT_ID = os.environ.get('client_id')
 GOOGLE_CLIENT_SECRET = os.environ.get('client_secret')
 SECRET_KEY = os.environ.get('secret_key')
 DB_HOST = os.environ.get("db_host")
-DB_PORT = os.environ.get("db_port")
-DB_NAME = os.environ.get("db_name")
-DB_USER = os.environ.get("db_user")
+DB_PORT = os.environ.get("db_port", 5432)
+DB_NAME = os.environ.get("db_name", "opti")
+DB_USER = os.environ.get("db_user", "postgres") 
 DB_PASS = os.environ.get("db_pass")
 API_ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30
 REDIS_URL = os.environ.get("redis_url", "redis://localhost:6379")
