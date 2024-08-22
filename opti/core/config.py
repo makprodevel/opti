@@ -9,6 +9,7 @@ logger.add('logs/log.txt', rotation="500 KB")
 origins = [
     'http://localhost:5173/',
     'http://localhost:8000/',
+    'https://opti-app.serveo.net',
 ]
 GOOGLE_REDIRECT_URI = "http://localhost:8000/auth/google"
 GOOGLE_CERTS_URL = "https://www.googleapis.com/oauth2/v3/certs"

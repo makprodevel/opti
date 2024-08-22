@@ -62,7 +62,7 @@ async def get_google_code(
     user_id = await get_id_from_email(email)
     redis = get_redis()
     await redis.sadd('valid_id', str(user_id))
-    response.set_cookie('jwt', create_token(str(user_id)), secure=True, httponly=True)
+    response.set_cookie('jwt', create_token(str(user_id)), secure=True, httponly=True, samesite=None)
     logger.debug(f"get google token for {user_id}")
 
 
