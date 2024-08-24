@@ -6,13 +6,13 @@ from fastapi.security import OAuth2AuthorizationCodeBearer
 from sqlalchemy import select
 from starlette import status
 
+from opti.auth.scheme import FetchGoogleClientId
 from opti.core.database import async_session_maker
 from opti.auth.jwt import create_token, decode_google_token
 from opti.auth.models import User
 from opti.core.redis import get_redis
 from opti.core.utils import create_nickname_from_email
-from opti.core.config import logger
-
+from opti.core.config import logger, GOOGLE_CLIENT_ID
 
 auth = APIRouter(
     prefix='/auth',
@@ -50,6 +50,11 @@ async def get_id_from_email(email: str) -> UUID:
             await session.commit()
             user = new_user
         return user.id
+
+
+@auth.get('/googleclientid', response_model=FetchGoogleClientId)
+async def fetch_google_client_id():
+    return FetchGoogleClientId(GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID)
 
 
 @auth.get('/google')
